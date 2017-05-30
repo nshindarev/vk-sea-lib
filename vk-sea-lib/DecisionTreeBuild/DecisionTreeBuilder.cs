@@ -39,7 +39,7 @@ namespace vk_sea_lib.DecisionTreeBuild
 
         public void studyDT()
         {
-            generateCSV(DecisionTreeBuilder.training_dataset);
+            //generateCSV(DecisionTreeBuilder.training_dataset);
 
             // Create a new codification codebook to
             // convert strings into integer symbols
@@ -81,7 +81,7 @@ namespace vk_sea_lib.DecisionTreeBuild
 
 
         }
-        public void generateCSV(DataTable dt)
+        public void generateCSV(DataTable dt, string destinationPath)
         {
             StringBuilder sb = new StringBuilder();
 
@@ -95,7 +95,7 @@ namespace vk_sea_lib.DecisionTreeBuild
                 sb.AppendLine(string.Join(",", fields));
             }
 
-            string destinationPath = @"C:/Users/Shindarev Nikita/Desktop/train_and_test.csv";
+            
             File.WriteAllText(destinationPath, sb.ToString());
         }
 
