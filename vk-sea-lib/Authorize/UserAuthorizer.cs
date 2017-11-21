@@ -5,6 +5,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
+using vk_sea_lib.Resources;
 
 namespace vk_sea_lib.Authorize
 {
@@ -61,7 +62,9 @@ namespace vk_sea_lib.Authorize
             t.Name = "browserThread";
             t.Start();
 
-            Console.ReadLine();
+            Logger.InitLogger();//инициализация - требуется один раз в начале
+            Logger.Log.Info("Ура заработало!");
+
         }
         private void browserThread()
         {
