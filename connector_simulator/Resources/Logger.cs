@@ -6,7 +6,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace vk_sea_lib.Resources
+namespace connector_simulator.Resources
 {
     public static class Logger
     {

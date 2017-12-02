@@ -1,4 +1,5 @@
 ﻿using Accord.MachineLearning.DecisionTrees;
+using log4net;
 using Morpher.Generic;
 using Morpher.Russian;
 using QuickGraph;
@@ -20,10 +21,12 @@ using VkNet.Model.Attachments;
 using VkNet.Model.RequestParams;
 using VkNet.Utils;
 
+
 namespace vk_sea_lib
 {
-    class AlternateEmployeesSearcher
+    class EmployeesSearcher
     {
+        private static ILog logger = LogManager.GetLogger("EmployeesSearcher");
         public string companyName {
             get
             {
@@ -51,7 +54,7 @@ namespace vk_sea_lib
         private int count_affiliates;
 
         // Constructor
-        public AlternateEmployeesSearcher(DecisionTreeBuilder decisionTree, string companyName, string vkPageId)
+        public EmployeesSearcher(DecisionTreeBuilder decisionTree, string companyName, string vkPageId)
         {
             this.tree = decisionTree;
 
@@ -279,7 +282,7 @@ namespace vk_sea_lib
                             Thread.Sleep(100);
 
                             EmployeesFoundList.Add(VkApiHolder.Api.Users.Get((long)row[0], ProfileFields.LastName), false);
-                            Console.WriteLine("дерево выявило не сотрудника!!!!");
+                            logger.Debug("not employee"+ VkApiHolder.Api.Users.Get((long)row[0], ProfileFields.LastName).ToString());
                         }
                         catch (TooManyRequestsException req_ex)
                         {

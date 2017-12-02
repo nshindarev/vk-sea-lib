@@ -1,4 +1,5 @@
-﻿using System;
+﻿using log4net;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -11,6 +12,9 @@ namespace vk_sea_lib.Authorize
 {
     public class UserAuthorizer
     {
+
+        private static ILog logger = LogManager.GetLogger("UserAuthorizer");
+        
         /**
          *  waiter: ждет заполнения логина и пароля 
          */
@@ -58,13 +62,11 @@ namespace vk_sea_lib.Authorize
             UserAuthorizer.user_id = 0;
 
 
-            Thread t = new Thread(browserThread);
+            /*Thread t = new Thread(browserThread);
             t.Name = "browserThread";
-            t.Start();
-
-            Logger.InitLogger();//инициализация - требуется один раз в начале
-            Logger.Log.Info("Ура заработало!");
-
+            t.Start();*/
+            
+            browserThread();
         }
         private void browserThread()
         {
@@ -75,7 +77,7 @@ namespace vk_sea_lib.Authorize
             object URL = String.Format("https://api.vk.com/oauth/authorize?client_id={0}&scope={1}&display=popup&response_type=token", app_id, scope);
 
             // override Internet Explorer events
-            IE.DocumentComplete += e.OnLogPassInserted;
+            IE.NavigateComplete2 += e.OnLogPassInserted;
 
             IE.Visible = true;
             IE.Navigate2(ref URL, ref Empty, ref Empty, ref Empty, ref Empty);
@@ -110,8 +112,14 @@ namespace vk_sea_lib.Authorize
                     }
                 }
 
-                Console.WriteLine(UserAuthorizer.access_token);
-                Console.WriteLine(UserAuthorizer.user_id.ToString());
+                logger.Debug("connection succeed, access token was sent");
+                logger.Debug("_________________________________________");
+
+                logger.Info("access token:          "+ UserAuthorizer.access_token);
+                logger.Info("authorized by user:    "+ UserAuthorizer.user_id.ToString());
+
+                logger.Debug("_________________________________________");
+
 
 
 

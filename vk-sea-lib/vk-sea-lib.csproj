@@ -132,7 +132,6 @@
     <Compile Include="Parser\CollectingTrainingDataset.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Resources\BoyerMoore.cs" />
-    <Compile Include="Resources\Logger.cs" />
     <Compile Include="Resources\VkApiHolder.cs" />
   </ItemGroup>
   <ItemGroup>
