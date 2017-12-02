@@ -1,4 +1,5 @@
-﻿using Morpher.Generic;
+﻿using log4net;
+using Morpher.Generic;
 using Morpher.Russian;
 using System;
 using System.Collections.Generic;
@@ -23,10 +24,17 @@ namespace vk_sea_lib.Parser
 {
     class CollectingTrainingDataset
     {
+        private static ILog logger = LogManager.GetLogger("CollectingTrainingDataset");
+
         public CollectingTrainingDataset(string companyName, string vkPageId)
         {
             this.companyName = companyName;
             this.vkPageId = vkPageId;
+
+            logger.Debug("start of collecting training dataset for classifier");
+            logger.Debug("COMPANY: " + companyName);
+            logger.Debug("VK ID:   " + vkPageId);
+            logger.Debug("___________________________________________________");    
         }
         // api fields
         private static string api_url = "https://api.vk.com/";
@@ -106,6 +114,9 @@ namespace vk_sea_lib.Parser
                 Count = 1000
 
             }).ToList();
+            logger.Debug("Found " + has_firm_name_employees.Count() + " employees with has_firm_name == true");
+            logger.Debug("_________________________________________________________________________________");
+
 
             this.count_affiliates = 4 * has_firm_name_employees.Count();
 
@@ -133,7 +144,8 @@ namespace vk_sea_lib.Parser
             }
             catch (AccessDeniedException ex)
             {
-                Console.WriteLine("cannot analyze posts and photos");
+                logger.Error("Access Denied Exception: " + ex.Message);
+                logger.Error("_______________________________________");
             }
 
             List<User> has_another_firm_name = new List<User>();
@@ -153,7 +165,10 @@ namespace vk_sea_lib.Parser
                     }).ToList<User>();
                     Thread.Sleep(100);
 
-
+                    
+                    /**
+                     *  Позволяет выявить друзей уже найденных сотрудников, которые работают в другой компании
+                     */ 
                     foreach (User employee_friend in employee_friends)
                     {
                         bool match_found = false;
@@ -168,7 +183,7 @@ namespace vk_sea_lib.Parser
                                 if (search_by_name.Search((employee_friend.Career[i].Company)) != -1)
                                 {
                                     match_found = true;
-                                    Console.WriteLine("match found: user id = {0}", employee_friend.LastName);
+                                    //Console.WriteLine("match found: user id = {0}", employee_friend.LastName);
                                 }
                             }
                             else
@@ -183,6 +198,8 @@ namespace vk_sea_lib.Parser
                         if (!match_found && employee_friend.Career.Count != 0)
                         {
                             has_another_firm_name.Add(employee_friend);
+                            if (has_another_firm_name.Count() % 100 == 0)
+                                logger.Debug("Found 100 new non-employees, non-employees in training dataset == "+ has_another_firm_name.Count());
                         }
                     }
                 }
@@ -206,6 +223,12 @@ namespace vk_sea_lib.Parser
              *      row[8] = last_name
              *    
              */
+
+            logger.Info(".....................................");
+            logger.Info("Finished collecting training dataset.");
+            logger.Info("Found non-employees: " + has_another_firm_name.Count());
+            logger.Info("Found employees:     " + has_firm_name_employees.Count());
+            logger.Info("........................");
 
             foreach (User training_employee in has_firm_name_employees)
             {
@@ -272,6 +295,8 @@ namespace vk_sea_lib.Parser
                 catch (TooManyRequestsException ex)
                 {
                     Thread.Sleep(300);
+                    logger.Warn("VK too many requests exception");
+
                 }
 
             }
@@ -320,7 +345,7 @@ namespace vk_sea_lib.Parser
             }
             catch(TypeInitializationException morpher_ex)
             {
-                Console.WriteLine(morpher_ex.Message);
+                logger.Error(morpher_ex.Message);
             }
 
             foreach (User affiliate in affiliates)
@@ -343,6 +368,7 @@ namespace vk_sea_lib.Parser
                     foreach (DataRow row in users_found_surname)
                     {
                         row[1] = 1;
+                        logger.Debug("affiliate " + row[0] + " was mentioned in group");
                     }
 
                 }
@@ -350,6 +376,9 @@ namespace vk_sea_lib.Parser
 
         }
 
+        /**
+         *  TODO: на данном этапе должен осуществляться препроцессинг текста
+         */ 
         private void makeDictionary(List<Post> group_posts)
         {
             this.words_in_group = new Dictionary<string, string>();
@@ -364,6 +393,8 @@ namespace vk_sea_lib.Parser
                         this.words_in_group.Add(word, word);
                 }
             }
+            logger.Debug("collected all group posts");
+            logger.Debug("total number of words: " + words_in_group.Count());
         }
         private List<string> makeSurnameValuesToSearch(string surname)
         {
@@ -426,6 +457,8 @@ namespace vk_sea_lib.Parser
                 foreach (DataRow row in users_found_surname)
                 {
                     row[3] = likes_by_user.Value;
+
+                    logger.Debug("liked " + row[3] + " posts by affiliate " + row[0]);
                 }
             }
         }
@@ -484,6 +517,7 @@ namespace vk_sea_lib.Parser
                 catch (TooManyRequestsException ex)
                 {
                     Thread.Sleep(200);
+                    logger.Warn("VK too many requests exception");
                 }
 
 
@@ -524,9 +558,10 @@ namespace vk_sea_lib.Parser
                 entry.Value.Sort();
 
                 rez.Add(entry.Key, GetSimilarID(entry.Value, group_followers_ids));
-                Console.WriteLine("for id:{0}", entry.Key);
-                GetSimilarID(entry.Value, group_followers_ids).ForEach(i => Console.Write("{0}\t", i));
-                Console.WriteLine();
+                logger.Debug("for affiliate"+ entry.Key + " found"+ entry.Value.Count());
+               
+                //TODO : CHECK STRING BELOW
+                //GetSimilarID(entry.Value, group_followers_ids).ForEach(i => Console.Write("{0}\t", i));
             }
             return rez;
         }
@@ -552,7 +587,8 @@ namespace vk_sea_lib.Parser
                 }
                 catch (Exception ex)
                 {
-
+                    logger.Error("exception occured during network topology analyze");
+                    logger.Error(ex.Message);
                 }
             }
 

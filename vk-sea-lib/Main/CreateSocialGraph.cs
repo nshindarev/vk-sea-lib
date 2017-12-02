@@ -31,7 +31,7 @@ namespace vk_sea_lib.Main
         public void createSocialGraph()
         {
             //собираем обучающую выборку
-            CollectingTrainingDataset collector = new CollectingTrainingDataset(this.access_token, this.user_id);
+            CollectingTrainingDataset collector = new CollectingTrainingDataset("Петер-Сервис", "57902527");
             collector.parseInformation();
             this.trainingDataset = collector.training_dataset;
 
@@ -40,7 +40,7 @@ namespace vk_sea_lib.Main
             dt.studyDT();
 
             //собираем оставшиеся страницы
-            AlternateEmployeesSearcher searcher = new AlternateEmployeesSearcher(dt, collector.companyName, collector.vkPageId);
+            EmployeesSearcher searcher = new EmployeesSearcher(dt, collector.companyName, collector.vkPageId);
             searcher.findAllEmployees();
 
             this.empSocialGraph = searcher.EmployeesSocialGraph;
