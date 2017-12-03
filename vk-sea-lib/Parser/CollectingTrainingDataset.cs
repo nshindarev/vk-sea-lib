@@ -457,7 +457,6 @@ namespace vk_sea_lib.Parser
                 foreach (DataRow row in users_found_surname)
                 {
                     row[3] = likes_by_user.Value;
-
                     logger.Debug("liked " + row[3] + " posts by affiliate " + row[0]);
                 }
             }
@@ -558,7 +557,7 @@ namespace vk_sea_lib.Parser
                 entry.Value.Sort();
 
                 rez.Add(entry.Key, GetSimilarID(entry.Value, group_followers_ids));
-                logger.Debug("for affiliate"+ entry.Key + " found"+ entry.Value.Count());
+                logger.Debug("for affiliate"+ entry.Key + " found "+ entry.Value.Count());
                
                 //TODO : CHECK STRING BELOW
                 //GetSimilarID(entry.Value, group_followers_ids).ForEach(i => Console.Write("{0}\t", i));

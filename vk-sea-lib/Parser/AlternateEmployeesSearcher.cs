@@ -12,6 +12,7 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using vk_sea_lib.DecisionTreeBuild;
+using vk_sea_lib.Parser.GraphOperations;
 using vk_sea_lib.Resources;
 using VkNet.Enums.Filters;
 using VkNet.Enums.SafetyEnums;
@@ -98,24 +99,7 @@ namespace vk_sea_lib
 
             this.training_dataset.Columns.Add("first_name", typeof(string));
             this.training_dataset.Columns.Add("last_name", typeof(string));
-            /**
-             * 
-             * Init columns in dataset
-             * 
-             */
-            this.dataset = new DataTable("affiliates to analyze");
-
-            this.dataset.Columns.Add("vk_id", typeof(long));
-
-            this.dataset.Columns.Add("on_web", typeof(int));
-            this.dataset.Columns.Add("has_firm_name", typeof(int));
-            this.dataset.Columns.Add("likes_counter", typeof(int));
-            this.dataset.Columns.Add("followed_by", typeof(int));
-            this.dataset.Columns.Add("following_matches", typeof(int));
-            this.dataset.Columns.Add("is_employee", typeof(int));
-
-            this.dataset.Columns.Add("first_name", typeof(string));
-            this.dataset.Columns.Add("last_name", typeof(string));
+            
 
             /**
               *  Собираем пользователей, c has_firm_name = true
@@ -157,7 +141,8 @@ namespace vk_sea_lib
             }
             catch (AccessDeniedException ex)
             {
-                Console.WriteLine("cannot analyze posts and photos");
+                logger.Error("Access Denied Exception: " + ex.Message);
+                logger.Error("_______________________________________");
             }
 
             makeDictionary(group_posts);
@@ -181,15 +166,15 @@ namespace vk_sea_lib
              *    
              */
 
-            EmployeesFoundList = new Dictionary<User, bool>();
-            foreach (User employee in has_firm_name_employees)
-            {
-                EmployeesFoundList.Add(employee, true);
-            }
+            EmployeeSearcher blackEmployeeStatusSetter = new EmployeeSearcher(has_firm_name_employees, tree, training_dataset, group_posts, group_photos, 1000);
+            blackEmployeeStatusSetter.initialize_searcher();
 
-            foreach (User employee in has_firm_name_employees)
+            foreach (KeyValuePair<long, string> black_vertice in blackEmployeeStatusSetter.getAllBlackStatusedEmp)
             {
-                collectFriendsEmployees(employee, group_posts, group_photos);
+                if (black_vertice.Value.Equals("black"))
+                {
+                    logger.Info("RESULT OF RESEARCH: FOUND EMPLOYEE " + black_vertice.Key);
+                }
             }
 
             //сохраняем в граф всех найденных сотрудников
@@ -200,6 +185,10 @@ namespace vk_sea_lib
          * метод отсеивает ранее проанализированные страницы
          * и сохраняет результаты работы дерева в EmployeesFoundList
          */
+
+        /**
+         *   TODO: переделать в рекурсивный вызов, опробовать концепции 1st level с рекурсией или 2nd level 
+         */  
         private void collectFriendsEmployees(User employee, List<Post> group_posts, List<Photo> group_photos)
         {
 
@@ -207,12 +196,15 @@ namespace vk_sea_lib
 
             try
             {
+                /**
+                 *  TODO: тут ограничили функционал
+                 */ 
                 Thread.Sleep(100);
                 affiliate_friends = VkApiHolder.Api.Friends.Get(new FriendsGetParams
                 {
                     UserId = Convert.ToInt32(employee.Id),
                     Order = FriendsOrder.Hints,
-                    Count = 100,
+                    //    Count = 100,
                     Fields = (ProfileFields)(ProfileFields.Domain)
 
                 }).ToList<User>();
@@ -222,6 +214,7 @@ namespace vk_sea_lib
             catch (TooManyRequestsException ex)
             {
                 Thread.Sleep(300);
+                logger.Error("Too many requests exception");
             }
 
             if (affiliate_friends.Count != 0)
@@ -265,6 +258,10 @@ namespace vk_sea_lib
                 /**
                  *  проходим по дереву для проанализированных страниц
                  */
+
+                 /**
+                  * TODO: вот тут какая-то пародия на garbage collector
+                  */  
                 DataTable symbols = tree.codebook.Apply(training_dataset);
                 foreach (DataRow row in symbols.Rows)
                 {
@@ -467,6 +464,9 @@ namespace vk_sea_lib
                         this.words_in_group.Add(word, word);
                 }
             }
+
+            logger.Debug("collected all group posts");
+            logger.Debug("total number of words: " + words_in_group.Count());
         }
 
         private void analyzeNetworkTopology(List<User> affiliates)
@@ -624,6 +624,8 @@ namespace vk_sea_lib
                 foreach (DataRow row in users_found_surname)
                 {
                     row[3] = likes_by_user.Value;
+                    logger.Debug("liked " + row[3] + " posts by affiliate " + row[0]);
+
                 }
             }
         }
@@ -663,9 +665,10 @@ namespace vk_sea_lib
                 entry.Value.Sort();
 
                 rez.Add(entry.Key, GetSimilarID(entry.Value, group_followers_ids));
-                Console.WriteLine("for id:{0}", entry.Key);
-                GetSimilarID(entry.Value, group_followers_ids).ForEach(i => Console.Write("{0}\t", i));
-                Console.WriteLine();
+                logger.Debug("for affiliate" + entry.Key + " found " + entry.Value.Count());
+            
+                // TODO: CHECK STRING BELOW
+                // GetSimilarID(entry.Value, group_followers_ids).ForEach(i => Console.Write("{0}\t", i));
             }
             return rez;
         }
@@ -691,7 +694,8 @@ namespace vk_sea_lib
                 }
                 catch (Exception ex)
                 {
-
+                    logger.Error("exception occured during network topology analyze");
+                    logger.Error(ex.Message);
                 }
             }
 

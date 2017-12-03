@@ -130,6 +130,7 @@
     <Compile Include="Parser\AlternateEmployeesSearcher.cs" />
     <Compile Include="Authorize\UserAuthorizer.cs" />
     <Compile Include="Parser\CollectingTrainingDataset.cs" />
+    <Compile Include="Parser\GraphOperations\EmployeeSearcher.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Resources\BoyerMoore.cs" />
     <Compile Include="Resources\VkApiHolder.cs" />

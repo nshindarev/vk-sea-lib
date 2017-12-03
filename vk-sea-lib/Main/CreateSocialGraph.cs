@@ -44,6 +44,7 @@ namespace vk_sea_lib.Main
             searcher.findAllEmployees();
 
             this.empSocialGraph = searcher.EmployeesSocialGraph;
+            Console.WriteLine();
         }
     }
 }
