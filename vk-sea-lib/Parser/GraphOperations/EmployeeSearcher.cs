@@ -172,16 +172,10 @@ namespace vk_sea_lib.Parser.GraphOperations
             List<User> white_affiliates_objects = new List<User>();
             foreach (long id in white_affiliates)
             {
-                try
-                {
-                    User user = VkApiHolder.Api.Users.Get(id, ProfileFields.All);
-                    white_affiliates_objects.Add(user);
-                }
-                catch (TooManyRequestsException ex)
-                {
-                    Thread.Sleep(50);
-                    logger.Error("Too many requests exception");
-                }
+                User customUser = new User();
+                customUser.Id = id;
+
+                white_affiliates_objects.Add(customUser);
             }
 
 
@@ -201,8 +195,8 @@ namespace vk_sea_lib.Parser.GraphOperations
                 row[5] = 0;
                 row[6] = 0;
 
-                row[7] = white_affiliate.FirstName;
-                row[8] = white_affiliate.LastName;
+                row[7] = "";
+                row[8] = "";
 
                 inputAffiliatesToTree.Rows.Add(row);
             }
@@ -285,7 +279,7 @@ namespace vk_sea_lib.Parser.GraphOperations
         private void analyzeBufferParams(List<User> affiliates, List<Post> group_posts, List<Photo> group_photos)
         {
             // заполняем onWeb параметр
-            searchInGroupPosts(affiliates);
+            //searchInGroupPosts(affiliates);
 
             // заполняем likesCounter параметр
             searchInGroupLikes(group_posts, group_photos);

@@ -31,7 +31,9 @@ namespace vk_sea_lib.Main
         public void createSocialGraph()
         {
             //собираем обучающую выборку
-            CollectingTrainingDataset collector = new CollectingTrainingDataset("Петер-Сервис", "57902527");
+            //CollectingTrainingDataset collector = new CollectingTrainingDataset("Петер-Сервис", "57902527");
+
+            CollectingTrainingDataset collector = new CollectingTrainingDataset("Кодельная", "116186911");
             collector.parseInformation();
             this.trainingDataset = collector.training_dataset;
 
