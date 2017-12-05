@@ -166,7 +166,7 @@ namespace vk_sea_lib
              *    
              */
 
-            EmployeeSearcher blackEmployeeStatusSetter = new EmployeeSearcher(has_firm_name_employees, tree, training_dataset, group_posts, group_photos, 1000);
+            EmployeeSearcher blackEmployeeStatusSetter = new EmployeeSearcher(has_firm_name_employees, tree, training_dataset, group_posts, group_photos, 1000, this.vk_company_page_id, this.words_in_group);
             blackEmployeeStatusSetter.initialize_searcher();
 
             foreach (KeyValuePair<long, string> black_vertice in blackEmployeeStatusSetter.getAllBlackStatusedEmp)
@@ -178,7 +178,7 @@ namespace vk_sea_lib
             }
 
             //сохраняем в граф всех найденных сотрудников
-            fillEmployeesIntoGraph();
+            //fillEmployeesIntoGraph();
         }
 
         /**

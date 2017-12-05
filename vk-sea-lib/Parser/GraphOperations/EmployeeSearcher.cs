@@ -30,7 +30,6 @@ namespace vk_sea_lib.Parser.GraphOperations
          *  ... "white": не идентифицирован как сотрудник компании, анализу не подвергается
          */
         private Dictionary<long, string> colored_vertices;
-        private Dictionary<User, string> colored_affiliates;
 
         /**
          *  перечень указавших текущее место работы в данной компании
@@ -50,17 +49,18 @@ namespace vk_sea_lib.Parser.GraphOperations
         private string vk_company_page_id;
         private int limit;
 
-        public Dictionary<long, string> getAllBlackStatusedEmp
-        {
-            get{
+        public Dictionary<long, string> getAllBlackStatusedEmp {
+            get
+            {
                 return this.colored_vertices;
             }
         }
 
-        public EmployeeSearcher(List<User> has_firm_name_employees, DecisionTreeBuilder tree, 
-                                DataTable inputAffiliatesToTree, List<Post> group_posts, List<Photo> group_photos, int limit)
+        public EmployeeSearcher(List<User> has_firm_name_employees, DecisionTreeBuilder tree,
+                                DataTable inputAffiliatesToTree, List<Post> group_posts, List<Photo> group_photos, int limit,
+                                string vk_company_page_id, Dictionary<string, string> words_in_group)
         {
-           
+
             colored_vertices = new Dictionary<long, string>();
 
             this.has_firm_name_employees = has_firm_name_employees;
@@ -71,24 +71,39 @@ namespace vk_sea_lib.Parser.GraphOperations
             this.inputAffiliatesToTree = inputAffiliatesToTree;
             this.group_photos = group_photos;
             this.group_posts = group_posts;
+            this.vk_company_page_id = vk_company_page_id;
+            this.words_in_group = words_in_group;
         }
-        
+
         public void initialize_searcher()
         {
             // инициализируем граф друзей для сотрудников
             this.coloredSocialGraph = new AdjacencyGraph<long, Edge<long>>();
 
+            //подсчитываем лайки
+            this.makeLikesDictionary(group_posts, group_photos);
+
+            logger.Debug("SEARCH STARTED: NUMBER OF BLACK VERTICES =" + has_firm_name_employees.Count());
+            
+
             foreach (User emp in this.has_firm_name_employees)
             {
-                colored_vertices.Add(emp.Id, "grey");
+                if (colored_vertices.ContainsKey(emp.Id))
+                {
+                    this.colored_vertices.Remove(emp.Id);
+                }
+
+                colored_vertices.Add(emp.Id,"grey");
                 coloredSocialGraph.AddVertex(emp.Id);
 
                 collectAllFriends(emp.Id);
             }
 
-            logger.Debug("SEARCH STARTED: NUMBER OF BLACK VERTICES =" + colored_vertices.Count());
+            logger.Debug("SEARCH STARTED: 1st level of research" + colored_vertices.Count());
             firstLevelSearcher();
         }
+
+
 
         /// <summary>
         /// рекурсивный метод, вызывается после инициализации
@@ -96,55 +111,60 @@ namespace vk_sea_lib.Parser.GraphOperations
         /// </summary>
         private void firstLevelSearcher()
         {
-
             // на входе только черные и серые вершины. 
-            // 1) собираем белые
-            foreach (KeyValuePair<long, string> affiliate in colored_vertices)
+
+            /**
+             * 
+             * собираем белые и делаем черными старые серые
+             * 
+             */
+            foreach (KeyValuePair<long, string> affiliate in colored_vertices.ToList())
             {
                 if (affiliate.Value.Equals("grey"))
                 {
                     collectAllFriends(affiliate.Key);
+                    colored_vertices[affiliate.Key] = "black";
                 }
+               
             }
-            foreach (KeyValuePair<long, string> affiliate in colored_vertices)
+
+            /**
+              *  для проверки, что лимит еще не достигнут
+              */
+
+          int black_counter = 0;
+            foreach (string s in colored_vertices.Values)
             {
-                List<long> white_affiliates = new List<long>();
+                if (s.Equals("black")) black_counter++;
+            }
+
+            /**
+             *   собираем найденные в лист
+             */
+
+            List<long> white_affiliates = new List<long>();
+            foreach (KeyValuePair<long, string> affiliate in colored_vertices.ToList())
+            {
                 if (affiliate.Value.Equals("white"))
                 {
                     white_affiliates.Add(affiliate.Key);
                 }
-
-                classifyWhiteVertices(ref white_affiliates);
-
-                /**
-                 *  проверяем, что лимит еще не достигнут
-                 */ 
-                int black_counter = 0;
-                foreach (string s in colored_vertices.Values)
-                {
-                    if (s.Equals("black")) black_counter++;
-                }
-
-                if (white_affiliates.Count() > 0 && black_counter<limit)
-                {
-                    foreach(long id in white_affiliates)
-                    {
-                        colored_vertices[id] = "grey";
-                    }
-                    foreach(KeyValuePair<long, string> color in colored_vertices)
-                    {
-                        long key = color.Key;
-                        if (color.Value.Equals("white")) colored_vertices.Remove(color.Key);
-                        else if (color.Value.Equals("grey"))
-                        {
-                            colored_vertices[color.Key] = "black";
-                            logger.Debug("new employee: id=" + color.Key);
-                        }
-                    }
-                    firstLevelSearcher();
-                }
             }
 
+            /**
+             *  отсеиваем non-employee из списка белых
+             */
+            classifyWhiteVertices(ref white_affiliates);
+
+            if (white_affiliates.Count() > 0 && black_counter < limit)
+            {
+                foreach (long id in white_affiliates)
+                {
+                    colored_vertices[id] = "grey";
+                }
+
+                firstLevelSearcher();
+            }
         }
         private void classifyWhiteVertices(ref List<long> white_affiliates)
         {
@@ -152,8 +172,16 @@ namespace vk_sea_lib.Parser.GraphOperations
             List<User> white_affiliates_objects = new List<User>();
             foreach (long id in white_affiliates)
             {
-                User user = VkApiHolder.Api.Users.Get(id, ProfileFields.All);
-                white_affiliates_objects.Add(user);
+                try
+                {
+                    User user = VkApiHolder.Api.Users.Get(id, ProfileFields.All);
+                    white_affiliates_objects.Add(user);
+                }
+                catch (TooManyRequestsException ex)
+                {
+                    Thread.Sleep(50);
+                    logger.Error("Too many requests exception");
+                }
             }
 
 
@@ -234,7 +262,7 @@ namespace vk_sea_lib.Parser.GraphOperations
                 /**
                  *  на данных итерациях не рассматриваем друга, если мы его уже находили как друга другого сотрудника
                  *  так как полностью связи между сотрудниками заполняются на более позднем этапе.
-                 */ 
+                 */
                 if (!colored_vertices.ContainsKey(affiliate.Id))
                 {
                     this.colored_vertices.Add(affiliate.Id, "white");
@@ -304,7 +332,7 @@ namespace vk_sea_lib.Parser.GraphOperations
         {
             string filterExpression, sortOrder;
 
-            foreach (KeyValuePair<long, int> likes_by_user in this.likes_in_group)
+            foreach (KeyValuePair<long, int> likes_by_user in this.likes_in_group.ToList())
             {
                 filterExpression = "vk_id = '" + likes_by_user.Key + "'";
                 sortOrder = "vk_id DESC";
@@ -366,7 +394,7 @@ namespace vk_sea_lib.Parser.GraphOperations
             var matchesFound = searchFollowingMatches(followers, datasetfriends);
 
             string filterExpression, sortOrder;
-            foreach (KeyValuePair<long, List<int>> user_to_update_id in matchesFound)
+            foreach (KeyValuePair<long, List<int>> user_to_update_id in matchesFound.ToList())
             {
                 filterExpression = "vk_id = '" + user_to_update_id.Key + "'";
                 sortOrder = "vk_id DESC";
@@ -402,7 +430,81 @@ namespace vk_sea_lib.Parser.GraphOperations
                 surname_declensions.Add(surname);
             }
             return surname_declensions;
+        } /**
+         *  ________________________________
+         *  Методы анализа параметров буфера
+         *  ________________________________
+         *  
+         */
+        private void makeLikesDictionary(List<Post> group_posts, List<Photo> group_photos)
+        {
+            this.likes_in_group = new Dictionary<long, int>();
+
+            // считаем лайки к постам группы
+            foreach (var post in group_posts)
+            {
+                try
+                {
+                    Thread.Sleep(100);
+                    VkCollection<long> likes = VkApiHolder.Api.Likes.GetList(new LikesGetListParams
+                    {
+                        Type = LikeObjectType.Post,
+                        OwnerId = post.OwnerId,
+                        ItemId = (long)post.Id
+
+                    });
+
+                    foreach (long user_likes_post in likes)
+                    {
+                        if (likes_in_group.Keys.Contains(user_likes_post)) likes_in_group[user_likes_post]++;
+                        else likes_in_group.Add(user_likes_post, 1);
+                    }
+                }
+                catch (TooManyRequestsException ex)
+                {
+                    logger.Error("TooManyRequestsException");
+                }
+
+                Thread.Sleep(100);
+            }
+
+            // считаем лайки к фотографиям
+            foreach (var photo in group_photos)
+            {
+                VkCollection<long> likes = VkApiHolder.Api.Likes.GetList(new LikesGetListParams
+                {
+                    Type = LikeObjectType.Post,
+                    OwnerId = photo.OwnerId,
+                    ItemId = (long)photo.Id
+
+                });
+
+                foreach (long user_likes_post in likes)
+                {
+                    if (likes_in_group.Keys.Contains(user_likes_post)) likes_in_group[user_likes_post]++;
+                    else likes_in_group.Add(user_likes_post, 1);
+                }
+            }
         }
+        private void makeDictionary(List<Post> group_posts)
+        {
+            this.words_in_group = new Dictionary<string, string>();
+            foreach (Post group_post in group_posts)
+            {
+                string post_txt = group_post.Text.ToLower();
+                string[] words_in_post = GetWords(post_txt);
+
+                foreach (string word in words_in_post)
+                {
+                    if (!this.words_in_group.ContainsKey(word))
+                        this.words_in_group.Add(word, word);
+                }
+            }
+
+            logger.Debug("collected all group posts");
+            logger.Debug("total number of words: " + words_in_group.Count());
+        }
+
         /**
         *  ________________________________
         *  Методы анализа параметров буфера
@@ -436,7 +538,7 @@ namespace vk_sea_lib.Parser.GraphOperations
             Dictionary<long, List<int>> rez = new Dictionary<long, List<int>>();
 
             group_followers_ids.Sort();
-            foreach (KeyValuePair<long, List<int>> entry in dataset_ids)
+            foreach (KeyValuePair<long, List<int>> entry in dataset_ids.ToList())
             {
                 entry.Value.Sort();
 
@@ -457,7 +559,7 @@ namespace vk_sea_lib.Parser.GraphOperations
             {
                 followers_ids.Add((int)user.Id);
             }
-            foreach (KeyValuePair<User, List<User>> entry in dataset)
+            foreach (KeyValuePair<User, List<User>> entry in dataset.ToList())
             {
                 List<int> _friends = new List<int>();
                 foreach (User user in entry.Value)
