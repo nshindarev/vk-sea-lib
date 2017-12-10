@@ -7,6 +7,9 @@ using System.Text;
 using System.Threading.Tasks;
 using vk_sea_lib.DecisionTreeBuild;
 using vk_sea_lib.Parser;
+using vk_sea_lib.Resources;
+using VkNet.Enums.Filters;
+using VkNet.Model;
 
 namespace vk_sea_lib.Main
 {
@@ -21,6 +24,7 @@ namespace vk_sea_lib.Main
         private DataTable trainingDataset;
         private Func<double[], int> func;
 
+        private EmployeesSearcher searcher;
 
         public CreateSocialGraph(string access_token, string user_id)
         {
@@ -31,7 +35,9 @@ namespace vk_sea_lib.Main
         public void createSocialGraph()
         {
             //собираем обучающую выборку
-            CollectingTrainingDataset collector = new CollectingTrainingDataset(this.access_token, this.user_id);
+            CollectingTrainingDataset collector = new CollectingTrainingDataset("Петер-Сервис", "57902527");
+
+            //CollectingTrainingDataset collector = new CollectingTrainingDataset("Кодельная", "116186911");
             collector.parseInformation();
             this.trainingDataset = collector.training_dataset;
 
@@ -40,10 +46,16 @@ namespace vk_sea_lib.Main
             dt.studyDT();
 
             //собираем оставшиеся страницы
-            AlternateEmployeesSearcher searcher = new AlternateEmployeesSearcher(dt, collector.companyName, collector.vkPageId);
-            searcher.findAllEmployees();
+            this.searcher = new EmployeesSearcher(dt, collector.companyName, collector.vkPageId);
+            this.searcher.findAllEmployees();
 
             this.empSocialGraph = searcher.EmployeesSocialGraph;
+            Console.WriteLine();
+        }
+        public List<long> searchEmpAtPoint(long newPointId, List<long> curEmp)
+        {
+           User newPointUser = VkApiHolder.Api.Users.Get(newPointId, ProfileFields.All);
+           return this.searcher.collectFriendsEmployees(newPointUser, searcher.group_posts, searcher.group_photos, ref curEmp);
         }
     }
 }

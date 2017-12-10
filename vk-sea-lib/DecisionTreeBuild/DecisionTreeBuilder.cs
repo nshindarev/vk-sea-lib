@@ -13,11 +13,13 @@ using System.Linq.Expressions;
 using System.Reflection;
 using System.Collections.Generic;
 using System.Linq;
+using log4net;
 
 namespace vk_sea_lib.DecisionTreeBuild
 {
     public class DecisionTreeBuilder
     {
+        private static ILog logger = LogManager.GetLogger("DecisionTreeBuilder");
 
         public Expression<Func<double[], int>> expression;
         public Func<double[], int> func;
@@ -74,7 +76,10 @@ namespace vk_sea_lib.DecisionTreeBuild
 
             // Convert to an expression tree
             this.expression = current_DT.ToExpression();
-            Console.WriteLine(GetDebugView(expression));
+ 
+            logger.Debug("_______________CLASSIFIER______________\r\n");
+            logger.Debug(GetDebugView(expression));
+            logger.Debug("_______________CLASSIFIER______________\r\n");
 
             // Compiles the expression to IL
             this.func = expression.Compile();

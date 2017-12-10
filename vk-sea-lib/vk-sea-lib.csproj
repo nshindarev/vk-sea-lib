@@ -64,6 +64,9 @@
       <HintPath>..\packages\KBCsv.5.0.0\lib\netstandard1.0\KBCsv.dll</HintPath>
       <Private>True</Private>
     </Reference>
+    <Reference Include="log4net, Version=2.0.8.0, Culture=neutral, PublicKeyToken=669e0ddf0bb1aa2a, processorArchitecture=MSIL">
+      <HintPath>..\packages\log4net.2.0.8\lib\net45-full\log4net.dll</HintPath>
+    </Reference>
     <Reference Include="Morpher.API, Version=1.0.7.0, Culture=neutral, PublicKeyToken=03702b3c5cdf2afc, processorArchitecture=MSIL">
       <HintPath>..\packages\Morpher.API.1.0.9\lib\net40\Morpher.API.dll</HintPath>
       <Private>True</Private>
@@ -127,6 +130,7 @@
     <Compile Include="Parser\AlternateEmployeesSearcher.cs" />
     <Compile Include="Authorize\UserAuthorizer.cs" />
     <Compile Include="Parser\CollectingTrainingDataset.cs" />
+    <Compile Include="Parser\GraphOperations\EmployeeSearcher.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Resources\BoyerMoore.cs" />
     <Compile Include="Resources\VkApiHolder.cs" />
