@@ -7,7 +7,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "vk-sea-lib", "vk-sea-lib\vk
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "connector_simulator", "connector_simulator\connector_simulator.csproj", "{EDEE6164-0DA4-4374-9D3A-83119429D090}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GuiPlatformSimulator", "GuiPlatformSimulator\GuiPlatformSimulator.csproj", "{9D9705CC-09C6-4953-8BDD-5FB3B3EFCBF0}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "gui-platform-sim", "GuiPlatformSimulator\gui-platform-sim.csproj", "{9D9705CC-09C6-4953-8BDD-5FB3B3EFCBF0}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

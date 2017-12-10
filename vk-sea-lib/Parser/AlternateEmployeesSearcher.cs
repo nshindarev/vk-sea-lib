@@ -69,6 +69,10 @@ namespace vk_sea_lib
         private Dictionary<long, int> likes_in_group;
         private DecisionTreeBuilder tree;
 
+        public List<Post> group_posts;
+        public List<Photo> group_photos;
+
+
 
         //результирующий граф и список найденных сотрудинков
         public AdjacencyGraph<long, Edge<long>> EmployeesSocialGraph;
@@ -181,6 +185,108 @@ namespace vk_sea_lib
             //fillEmployeesIntoGraph();
         }
 
+        public void findAllEmployees(string newEmpId)
+        {
+            /**
+             * init buffer dataset
+             */
+            this.training_dataset = new DataTable("decision tree trainer");
+
+            this.training_dataset.Columns.Add("vk_id", typeof(long));
+
+            this.training_dataset.Columns.Add("on_web", typeof(int));
+            this.training_dataset.Columns.Add("has_firm_name", typeof(int));
+            this.training_dataset.Columns.Add("likes_counter", typeof(int));
+            this.training_dataset.Columns.Add("followed_by", typeof(int));
+            this.training_dataset.Columns.Add("following_matches", typeof(int));
+            this.training_dataset.Columns.Add("is_employee", typeof(int));
+
+            this.training_dataset.Columns.Add("first_name", typeof(string));
+            this.training_dataset.Columns.Add("last_name", typeof(string));
+
+
+            /**
+              *  Собираем пользователей, c has_firm_name = true
+              */
+            List<User> friendsOfNewEmp = VkApiHolder.Api.Friends.Get(new FriendsGetParams
+            {
+                UserId = Convert.ToInt32(newEmpId),
+                Order = FriendsOrder.Hints,
+                //    Count = 100,
+                Fields = (ProfileFields)(ProfileFields.Domain)
+
+            }).ToList<User>();
+
+            /**
+             * 
+             *  Собираем посты официальной группы
+             * 
+             */
+            this.group_posts = new List<Post>();
+            this.group_photos = new List<Photo>();
+
+            makeLikesDictionary(group_posts, group_photos);
+
+            try
+            {
+                group_posts = VkApiHolder.Api.Wall.Get(new WallGetParams()
+                {
+                    OwnerId = Convert.ToInt32("-" + vk_company_page_id),
+                    Count = 100,
+                    Filter = WallFilter.Owner
+                }).WallPosts.ToList();
+
+
+                group_photos = VkApiHolder.Api.Photo.Get(new PhotoGetParams()
+                {
+                    OwnerId = Convert.ToInt32("-" + vk_company_page_id),
+                    Count = 1000,
+                    Extended = true,
+                    AlbumId = PhotoAlbumType.Profile
+                }).ToList();
+            }
+            catch (AccessDeniedException ex)
+            {
+                logger.Error("Access Denied Exception: " + ex.Message);
+                logger.Error("_______________________________________");
+            }
+
+            makeDictionary(group_posts);
+
+
+            //insert dataset into datatable
+            /**
+             *    DataRow Format: 
+             *      
+             *      row[0] = vk_id
+             *      
+             *      row[1] = on_web
+             *      row[2] = has_firm_name
+             *      row[3] = likes_counter
+             *      row[4] = followed_by
+             *      row[5] = following_matches
+             *      row[6] = is_employee
+             *    
+             *      row[7] = first_name
+             *      row[8] = last_name
+             *    
+             */
+
+            EmployeeSearcher blackEmployeeStatusSetter = new EmployeeSearcher(friendsOfNewEmp, tree, training_dataset, group_posts, group_photos, 1000, this.vk_company_page_id, this.words_in_group);
+            blackEmployeeStatusSetter.initialize_searcher();
+
+            foreach (KeyValuePair<long, string> black_vertice in blackEmployeeStatusSetter.getAllBlackStatusedEmp)
+            {
+                if (black_vertice.Value.Equals("black"))
+                {
+                    logger.Info("RESULT OF RESEARCH: FOUND EMPLOYEE " + black_vertice.Key);
+                }
+            }
+
+            //сохраняем в граф всех найденных сотрудников
+            //fillEmployeesIntoGraph();
+        }
+
         /**
          * метод отсеивает ранее проанализированные страницы
          * и сохраняет результаты работы дерева в EmployeesFoundList
@@ -188,10 +294,11 @@ namespace vk_sea_lib
 
         /**
          *   TODO: переделать в рекурсивный вызов, опробовать концепции 1st level с рекурсией или 2nd level 
-         */  
-        private void collectFriendsEmployees(User employee, List<Post> group_posts, List<Photo> group_photos)
+         */
+        public List<long> collectFriendsEmployees(User employee, List<Post> group_posts, List<Photo> group_photos, ref List<long> EmployeesFoundList)
+        
         {
-
+            List<long> newEmpFound = new List<long>();
             List<User> affiliate_friends = new List<User>();
 
             try
@@ -204,12 +311,9 @@ namespace vk_sea_lib
                 {
                     UserId = Convert.ToInt32(employee.Id),
                     Order = FriendsOrder.Hints,
-                    //    Count = 100,
                     Fields = (ProfileFields)(ProfileFields.Domain)
 
                 }).ToList<User>();
-
-                //datasetfriends.Add(employee, affiliate_friends);
             }
             catch (TooManyRequestsException ex)
             {
@@ -221,7 +325,7 @@ namespace vk_sea_lib
             {
                 foreach (User affiliate in affiliate_friends)
                 {
-                    if (EmployeesFoundList.ContainsKey(affiliate))
+                    if (EmployeesFoundList.Contains(affiliate.Id))
                     {
                         affiliate_friends.Remove(affiliate);
                     }
@@ -259,7 +363,7 @@ namespace vk_sea_lib
                  *  проходим по дереву для проанализированных страниц
                  */
 
-                 /**
+                /**
                   * TODO: вот тут какая-то пародия на garbage collector
                   */  
                 DataTable symbols = tree.codebook.Apply(training_dataset);
@@ -272,40 +376,14 @@ namespace vk_sea_lib
 
                     int is_employee = this.tree.func(new double[] { r1, r3, r4, r5 });
 
-                    if (is_employee == 0)
+                    if (is_employee == 1)
                     {
-                        try
-                        {
-                            Thread.Sleep(100);
-
-                            EmployeesFoundList.Add(VkApiHolder.Api.Users.Get((long)row[0], ProfileFields.LastName), false);
-                            logger.Debug("not employee"+ VkApiHolder.Api.Users.Get((long)row[0], ProfileFields.LastName).ToString());
-                        }
-                        catch (TooManyRequestsException req_ex)
-                        {
-                            Thread.Sleep(100);
-                            EmployeesFoundList.Add(VkApiHolder.Api.Users.Get((long)row[0], ProfileFields.LastName), false);
-                        }
-
-                    }
-                    else if (is_employee == 1)
-                    {
-                        try
-                        {
-                            Thread.Sleep(100);
-
-                            EmployeesFoundList.Add(VkApiHolder.Api.Users.Get((long)row[0], ProfileFields.LastName), true);
-                            Console.WriteLine("_____ сотрудник!!!!");
-                        }
-                        catch (TooManyRequestsException req_ex)
-                        {
-                            Thread.Sleep(100);
-                            EmployeesFoundList.Add(VkApiHolder.Api.Users.Get((long)row[0], ProfileFields.LastName), false);
-                        }
-
+                        newEmpFound.Add((long)row[0]);
+                        logger.Debug("not employee"+ VkApiHolder.Api.Users.Get((long)row[0], ProfileFields.LastName).ToString());
                     }
                 }
             }
+            return newEmpFound;
         }
 
         /**
@@ -330,7 +408,6 @@ namespace vk_sea_lib
         *  _________________________________________
         *  
         */
-
         private void fillEmployeesIntoGraph()
         {
             // инициализируем граф друзей для сотрудников

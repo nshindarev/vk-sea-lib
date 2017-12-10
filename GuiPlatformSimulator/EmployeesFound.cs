@@ -42,7 +42,38 @@ namespace GuiPlatformSimulator
             }
         }
 
-        private void EmployeesFound_Load(object sender, EventArgs e)
+        private void btnSearchNew_Click(object sender, EventArgs e)
+        {
+            EmployeeInfoHandler idForm = new EmployeeInfoHandler();
+            if (idForm.ShowDialog(this) == DialogResult.OK)
+            {
+                try
+                {
+                    UserAuthorizer auth = new vk_sea_lib.Authorize.UserAuthorizer();
+                    auth.authorize();
+
+                    creator = new CreateSocialGraph(UserAuthorizer.access_token, UserAuthorizer.user_id.ToString());
+
+                    List<long> foundEmp = new List<long>();
+                    foreach (string item in employeesListGui.Items)
+                    {
+                        foundEmp.Add((long)Convert.ToInt64(item));
+                    }
+
+                    long newId = (long)Convert.ToInt64(idForm.txtBox.Text);
+                    creator.searchEmpAtPoint(newId, foundEmp);
+                }
+                catch(Exception ex)
+                {
+                    MessageBox.Show(ex.Message);
+                }
+            }
+
+            idForm.Close();
+            idForm.Dispose();
+        }
+
+        private void btnStartResearch_Click(object sender, EventArgs e)
         {
             UserAuthorizer auth = new vk_sea_lib.Authorize.UserAuthorizer();
             auth.authorize();

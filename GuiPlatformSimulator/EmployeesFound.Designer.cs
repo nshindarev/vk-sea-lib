@@ -32,6 +32,7 @@
             this.btnAdd = new System.Windows.Forms.Button();
             this.btnDelete = new System.Windows.Forms.Button();
             this.btnSearchNew = new System.Windows.Forms.Button();
+            this.btnStartResearch = new System.Windows.Forms.Button();
             this.SuspendLayout();
             // 
             // employeesListGui
@@ -45,7 +46,7 @@
             // 
             // btnAdd
             // 
-            this.btnAdd.Location = new System.Drawing.Point(549, 78);
+            this.btnAdd.Location = new System.Drawing.Point(549, 110);
             this.btnAdd.Name = "btnAdd";
             this.btnAdd.Size = new System.Drawing.Size(209, 45);
             this.btnAdd.TabIndex = 1;
@@ -55,7 +56,7 @@
             // 
             // btnDelete
             // 
-            this.btnDelete.Location = new System.Drawing.Point(549, 142);
+            this.btnDelete.Location = new System.Drawing.Point(549, 174);
             this.btnDelete.Name = "btnDelete";
             this.btnDelete.Size = new System.Drawing.Size(209, 45);
             this.btnDelete.TabIndex = 2;
@@ -65,25 +66,36 @@
             // 
             // btnSearchNew
             // 
-            this.btnSearchNew.Location = new System.Drawing.Point(549, 208);
+            this.btnSearchNew.Location = new System.Drawing.Point(549, 240);
             this.btnSearchNew.Name = "btnSearchNew";
             this.btnSearchNew.Size = new System.Drawing.Size(209, 45);
             this.btnSearchNew.TabIndex = 3;
             this.btnSearchNew.Text = "Search At Point";
             this.btnSearchNew.UseVisualStyleBackColor = true;
+            this.btnSearchNew.Click += new System.EventHandler(this.btnSearchNew_Click);
+            // 
+            // btnStartResearch
+            // 
+            this.btnStartResearch.Location = new System.Drawing.Point(549, 44);
+            this.btnStartResearch.Name = "btnStartResearch";
+            this.btnStartResearch.Size = new System.Drawing.Size(209, 45);
+            this.btnStartResearch.TabIndex = 4;
+            this.btnStartResearch.Text = "Start Research";
+            this.btnStartResearch.UseVisualStyleBackColor = true;
+            this.btnStartResearch.Click += new System.EventHandler(this.btnStartResearch_Click);
             // 
             // EmployeesFound
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 16F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(842, 540);
+            this.Controls.Add(this.btnStartResearch);
             this.Controls.Add(this.btnSearchNew);
             this.Controls.Add(this.btnDelete);
             this.Controls.Add(this.btnAdd);
             this.Controls.Add(this.employeesListGui);
             this.Name = "EmployeesFound";
             this.Text = "Employees List";
-            this.Load += new System.EventHandler(this.EmployeesFound_Load);
             this.ResumeLayout(false);
 
         }
@@ -94,6 +106,7 @@
         private System.Windows.Forms.Button btnAdd;
         private System.Windows.Forms.Button btnDelete;
         private System.Windows.Forms.Button btnSearchNew;
+        private System.Windows.Forms.Button btnStartResearch;
     }
 }
 
