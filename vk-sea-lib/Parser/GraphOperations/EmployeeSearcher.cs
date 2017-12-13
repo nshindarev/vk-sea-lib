@@ -20,7 +20,7 @@ using VkNet.Utils;
 
 namespace vk_sea_lib.Parser.GraphOperations
 {
-    class EmployeeSearcher
+    public class EmployeeSearcher
     {
         private static ILog logger = LogManager.GetLogger("EmployeeSearcher");
         /**
@@ -29,7 +29,7 @@ namespace vk_sea_lib.Parser.GraphOperations
          *  ... "grey":  уже идентифицирован как сотрудник, ещё не проанализировали его друзей
          *  ... "white": не идентифицирован как сотрудник компании, анализу не подвергается
          */
-        private Dictionary<long, string> colored_vertices;
+        public Dictionary<long, string> colored_vertices;
 
         /**
          *  перечень указавших текущее место работы в данной компании
@@ -96,7 +96,7 @@ namespace vk_sea_lib.Parser.GraphOperations
                 colored_vertices.Add(emp.Id,"grey");
                 coloredSocialGraph.AddVertex(emp.Id);
 
-                collectAllFriends(emp.Id);
+               // collectAllFriends(emp.Id);
             }
 
             logger.Debug("SEARCH STARTED: 1st level of research" + colored_vertices.Count());
@@ -111,6 +111,13 @@ namespace vk_sea_lib.Parser.GraphOperations
         /// </summary>
         private void firstLevelSearcher()
         {
+            foreach (KeyValuePair<long, string> affiliate in colored_vertices.ToList())
+            {
+                if (affiliate.Value.Equals("white"))
+                {
+                    colored_vertices.Remove(affiliate.Key);
+                }
+            }
             // на входе только черные и серые вершины. 
 
             /**
@@ -125,7 +132,6 @@ namespace vk_sea_lib.Parser.GraphOperations
                     collectAllFriends(affiliate.Key);
                     colored_vertices[affiliate.Key] = "black";
                 }
-               
             }
 
             /**
@@ -158,24 +164,40 @@ namespace vk_sea_lib.Parser.GraphOperations
 
             if (white_affiliates.Count() > 0 && black_counter < limit)
             {
+                logger.Debug("....................");
+                logger.Debug("RESULTS OF ITERATION");
+                logger.Debug("....................");
+
                 foreach (long id in white_affiliates)
                 {
                     colored_vertices[id] = "grey";
                 }
 
-                firstLevelSearcher();
+                foreach (KeyValuePair<long, string> val in colored_vertices.ToList())
+                {
+                    logger.Debug("status " + val.Value + " for id " + val.Key);
+                }
+
+                    firstLevelSearcher();
             }
+
+
         }
         private void classifyWhiteVertices(ref List<long> white_affiliates)
         {
-
             List<User> white_affiliates_objects = new List<User>();
-            foreach (long id in white_affiliates)
+            try
             {
-                User customUser = new User();
-                customUser.Id = id;
-
-                white_affiliates_objects.Add(customUser);
+                
+                foreach (long id in white_affiliates)
+                {
+                    User customUser = VkApiHolder.Api.Users.Get(id);
+                    white_affiliates_objects.Add(customUser);
+                }
+            }
+            catch (TooManyRequestsException e)
+            {
+                Thread.Sleep(300);
             }
 
 
@@ -195,8 +217,8 @@ namespace vk_sea_lib.Parser.GraphOperations
                 row[5] = 0;
                 row[6] = 0;
 
-                row[7] = "";
-                row[8] = "";
+                row[7] = white_affiliate.FirstName;
+                row[8] = white_affiliate.LastName;
 
                 inputAffiliatesToTree.Rows.Add(row);
             }
@@ -236,16 +258,22 @@ namespace vk_sea_lib.Parser.GraphOperations
 
             try
             {
-                Thread.Sleep(100);
+                Thread.Sleep(200);
                 vertexFriends = VkApiHolder.Api.Friends.Get(new FriendsGetParams
                 {
                     UserId = Convert.ToInt32(curEmployee),
+                    Count = 50,
                     Order = FriendsOrder.Hints,
                     Fields = (ProfileFields)(ProfileFields.Domain)
 
                 }).ToList<User>();
             }
             catch (TooManyRequestsException ex)
+            {
+                Thread.Sleep(300);
+                logger.Error("Too many requests exception");
+            }
+            catch (Exception ex)
             {
                 Thread.Sleep(300);
                 logger.Error("Too many requests exception");
@@ -360,14 +388,14 @@ namespace vk_sea_lib.Parser.GraphOperations
                     }).ToList<User>();
                     datasetfriends.Add(user, affiliate_friends);
                 }
-                catch (TooManyRequestsException ex)
+                catch (Exception ex)
                 {
                     Thread.Sleep(300);
                 }
-                catch (VkApiException e)
-                {
-                    Thread.Sleep(300);
-                }
+                //catch (System.Net.WebException e)
+                //{
+                //    Thread.Sleep(300);
+                //}
 
             }
 
@@ -537,7 +565,7 @@ namespace vk_sea_lib.Parser.GraphOperations
                 entry.Value.Sort();
 
                 rez.Add(entry.Key, GetSimilarID(entry.Value, group_followers_ids));
-                logger.Debug("for affiliate" + entry.Key + " found " + entry.Value.Count());
+                logger.Debug("for affiliate " + entry.Key + " found " + entry.Value.Count());
 
                 // TODO: CHECK STRING BELOW
                 // GetSimilarID(entry.Value, group_followers_ids).ForEach(i => Console.Write("{0}\t", i));

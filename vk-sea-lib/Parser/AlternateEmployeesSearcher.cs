@@ -25,7 +25,7 @@ using VkNet.Utils;
 
 namespace vk_sea_lib
 {
-    class EmployeesSearcher
+    public class EmployeesSearcher
     {
         private static ILog logger = LogManager.GetLogger("EmployeesSearcher");
         public string companyName {
@@ -72,7 +72,7 @@ namespace vk_sea_lib
         public List<Post> group_posts;
         public List<Photo> group_photos;
 
-
+        public EmployeeSearcher blackEmployeeStatusSetter;
 
         //результирующий граф и список найденных сотрудинков
         public AdjacencyGraph<long, Edge<long>> EmployeesSocialGraph;
@@ -170,7 +170,7 @@ namespace vk_sea_lib
              *    
              */
 
-            EmployeeSearcher blackEmployeeStatusSetter = new EmployeeSearcher(has_firm_name_employees, tree, training_dataset, group_posts, group_photos, 1000, this.vk_company_page_id, this.words_in_group);
+            this.blackEmployeeStatusSetter = new EmployeeSearcher(has_firm_name_employees, tree, training_dataset, group_posts, group_photos, 100, this.vk_company_page_id, this.words_in_group);
             blackEmployeeStatusSetter.initialize_searcher();
 
             foreach (KeyValuePair<long, string> black_vertice in blackEmployeeStatusSetter.getAllBlackStatusedEmp)
@@ -286,7 +286,103 @@ namespace vk_sea_lib
             //сохраняем в граф всех найденных сотрудников
             //fillEmployeesIntoGraph();
         }
+       
+        public void findEmployeesAtPoint(long id)
+        {
+            /**
+           * init buffer dataset
+           */
+            this.training_dataset = new DataTable("decision tree trainer");
 
+            this.training_dataset.Columns.Add("vk_id", typeof(long));
+
+            this.training_dataset.Columns.Add("on_web", typeof(int));
+            this.training_dataset.Columns.Add("has_firm_name", typeof(int));
+            this.training_dataset.Columns.Add("likes_counter", typeof(int));
+            this.training_dataset.Columns.Add("followed_by", typeof(int));
+            this.training_dataset.Columns.Add("following_matches", typeof(int));
+            this.training_dataset.Columns.Add("is_employee", typeof(int));
+
+            this.training_dataset.Columns.Add("first_name", typeof(string));
+            this.training_dataset.Columns.Add("last_name", typeof(string));
+
+
+            /**
+              *  Собираем пользователей, c has_firm_name = true
+              */
+            List<User> has_firm_name_employees = VkApiHolder.Api.Users.Search(new UserSearchParams
+            {
+                Company = this.company_name,
+                Count = 1000
+
+            }).ToList();
+
+            /**
+             * 
+             *  Собираем посты официальной группы
+             * 
+             */
+            List<Post> group_posts = new List<Post>();
+            List<Photo> group_photos = new List<Photo>();
+
+            makeLikesDictionary(group_posts, group_photos);
+
+            try
+            {
+                group_posts = VkApiHolder.Api.Wall.Get(new WallGetParams()
+                {
+                    OwnerId = Convert.ToInt32("-" + vk_company_page_id),
+                    Count = 100,
+                    Filter = WallFilter.Owner
+                }).WallPosts.ToList();
+
+
+                group_photos = VkApiHolder.Api.Photo.Get(new PhotoGetParams()
+                {
+                    OwnerId = Convert.ToInt32("-" + vk_company_page_id),
+                    Count = 1000,
+                    Extended = true,
+                    AlbumId = PhotoAlbumType.Profile
+                }).ToList();
+            }
+            catch (AccessDeniedException ex)
+            {
+                logger.Error("Access Denied Exception: " + ex.Message);
+                logger.Error("_______________________________________");
+            }
+
+            makeDictionary(group_posts);
+
+
+            //insert dataset into datatable
+            /**
+             *    DataRow Format: 
+             *      
+             *      row[0] = vk_id
+             *      
+             *      row[1] = on_web
+             *      row[2] = has_firm_name
+             *      row[3] = likes_counter
+             *      row[4] = followed_by
+             *      row[5] = following_matches
+             *      row[6] = is_employee
+             *    
+             *      row[7] = first_name
+             *      row[8] = last_name
+             *    
+             */
+
+            this.blackEmployeeStatusSetter = new EmployeeSearcher(has_firm_name_employees, tree, training_dataset, group_posts, group_photos, 100, this.vk_company_page_id, this.words_in_group);
+            blackEmployeeStatusSetter.initialize_searcher();
+
+            foreach (KeyValuePair<long, string> black_vertice in blackEmployeeStatusSetter.getAllBlackStatusedEmp)
+            {
+                if (black_vertice.Value.Equals("black"))
+                {
+                    logger.Info("RESULT OF RESEARCH: FOUND EMPLOYEE " + black_vertice.Key);
+                }
+            }
+        }
         /**
          * метод отсеивает ранее проанализированные страницы
          * и сохраняет результаты работы дерева в EmployeesFoundList
@@ -298,7 +394,64 @@ namespace vk_sea_lib
         public List<long> collectFriendsEmployees(User employee, List<Post> group_posts, List<Photo> group_photos, ref List<long> EmployeesFoundList)
         
         {
+            this.training_dataset = new DataTable("decision tree trainer");
+
+            this.training_dataset.Columns.Add("vk_id", typeof(long));
+
+            this.training_dataset.Columns.Add("on_web", typeof(int));
+            this.training_dataset.Columns.Add("has_firm_name", typeof(int));
+            this.training_dataset.Columns.Add("likes_counter", typeof(int));
+            this.training_dataset.Columns.Add("followed_by", typeof(int));
+            this.training_dataset.Columns.Add("following_matches", typeof(int));
+            this.training_dataset.Columns.Add("is_employee", typeof(int));
+
+            this.training_dataset.Columns.Add("first_name", typeof(string));
+            this.training_dataset.Columns.Add("last_name", typeof(string));
+
             List<long> newEmpFound = new List<long>();
+            List<User> has_firm_name_employees = VkApiHolder.Api.Users.Search(new UserSearchParams
+            {
+                Company = this.company_name,
+                Count = 1000
+
+            }).ToList();
+
+            /**
+             * 
+             *  Собираем посты официальной группы
+             * 
+             */
+            group_posts = new List<Post>();
+            group_photos = new List<Photo>();
+
+            makeLikesDictionary(group_posts, group_photos);
+
+            try
+            {
+                group_posts = VkApiHolder.Api.Wall.Get(new WallGetParams()
+                {
+                    OwnerId = Convert.ToInt32("-" + vk_company_page_id),
+                    Count = 100,
+                    Filter = WallFilter.Owner
+                }).WallPosts.ToList();
+
+
+                group_photos = VkApiHolder.Api.Photo.Get(new PhotoGetParams()
+                {
+                    OwnerId = Convert.ToInt32("-" + vk_company_page_id),
+                    Count = 1000,
+                    Extended = true,
+                    AlbumId = PhotoAlbumType.Profile
+                }).ToList();
+            }
+            catch (AccessDeniedException ex)
+            {
+                logger.Error("Access Denied Exception: " + ex.Message);
+                logger.Error("_______________________________________");
+            }
+
+            makeDictionary(group_posts);
+
             List<User> affiliate_friends = new List<User>();
 
             try
@@ -336,7 +489,26 @@ namespace vk_sea_lib
                 /**
                  * инициализируем таблицу для заполнения найденных параметров
                  */
-                this.training_dataset.Rows.Clear();
+                try
+                {
+                    this.training_dataset.Rows.Clear();
+                }
+                catch(Exception ex)
+                {
+                    this.training_dataset = new DataTable("decision tree trainer");
+
+                    this.training_dataset.Columns.Add("vk_id", typeof(long));
+
+                    this.training_dataset.Columns.Add("on_web", typeof(int));
+                    this.training_dataset.Columns.Add("has_firm_name", typeof(int));
+                    this.training_dataset.Columns.Add("likes_counter", typeof(int));
+                    this.training_dataset.Columns.Add("followed_by", typeof(int));
+                    this.training_dataset.Columns.Add("following_matches", typeof(int));
+                    this.training_dataset.Columns.Add("is_employee", typeof(int));
+
+                    this.training_dataset.Columns.Add("first_name", typeof(string));
+                    this.training_dataset.Columns.Add("last_name", typeof(string));
+                }
 
                 foreach (User training_employee in affiliate_friends)
                 {

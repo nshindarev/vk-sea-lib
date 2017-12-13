@@ -33,6 +33,7 @@
             this.btnDelete = new System.Windows.Forms.Button();
             this.btnSearchNew = new System.Windows.Forms.Button();
             this.btnStartResearch = new System.Windows.Forms.Button();
+            this.btnUpdate = new System.Windows.Forms.Button();
             this.SuspendLayout();
             // 
             // employeesListGui
@@ -84,11 +85,22 @@
             this.btnStartResearch.UseVisualStyleBackColor = true;
             this.btnStartResearch.Click += new System.EventHandler(this.btnStartResearch_Click);
             // 
+            // btnUpdate
+            // 
+            this.btnUpdate.Location = new System.Drawing.Point(549, 303);
+            this.btnUpdate.Name = "btnUpdate";
+            this.btnUpdate.Size = new System.Drawing.Size(209, 48);
+            this.btnUpdate.TabIndex = 5;
+            this.btnUpdate.Text = "Update";
+            this.btnUpdate.UseVisualStyleBackColor = true;
+            this.btnUpdate.Click += new System.EventHandler(this.btnUpdate_Click);
+            // 
             // EmployeesFound
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 16F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(842, 540);
+            this.Controls.Add(this.btnUpdate);
             this.Controls.Add(this.btnStartResearch);
             this.Controls.Add(this.btnSearchNew);
             this.Controls.Add(this.btnDelete);
@@ -107,6 +119,7 @@
         private System.Windows.Forms.Button btnDelete;
         private System.Windows.Forms.Button btnSearchNew;
         private System.Windows.Forms.Button btnStartResearch;
+        private System.Windows.Forms.Button btnUpdate;
     }
 }
 

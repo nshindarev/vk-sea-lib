@@ -60,11 +60,6 @@ namespace vk_sea_lib.Authorize
         {
             UserAuthorizer.access_token = "";
             UserAuthorizer.user_id = 0;
-
-
-            /*Thread t = new Thread(browserThread);
-            t.Name = "browserThread";
-            t.Start();*/
             
             browserThread();
         }

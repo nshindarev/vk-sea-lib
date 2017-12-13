@@ -147,6 +147,11 @@ namespace vk_sea_lib.Parser
                 logger.Error("Access Denied Exception: " + ex.Message);
                 logger.Error("_______________________________________");
             }
+            catch(TooManyRequestsException ex)
+            {
+                logger.Error("too many req Exception: " + ex.Message);
+                logger.Error("_______________________________________");
+            }
 
             List<User> has_another_firm_name = new List<User>();
             foreach (User employee in has_firm_name_employees)

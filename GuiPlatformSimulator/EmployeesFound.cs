@@ -47,6 +47,10 @@ namespace GuiPlatformSimulator
             EmployeeInfoHandler idForm = new EmployeeInfoHandler();
             if (idForm.ShowDialog(this) == DialogResult.OK)
             {
+                /**
+                 *  1) авторизуемся
+                 *  2) если 
+                 */ 
                 try
                 {
                     UserAuthorizer auth = new vk_sea_lib.Authorize.UserAuthorizer();
@@ -60,8 +64,18 @@ namespace GuiPlatformSimulator
                         foundEmp.Add((long)Convert.ToInt64(item));
                     }
 
-                    long newId = (long)Convert.ToInt64(idForm.txtBox.Text);
-                    creator.searchEmpAtPoint(newId, foundEmp);
+                    Int64 newId = Convert.ToInt64(idForm.txtBox.Text.ToString());
+                    List<long> newEmpFound = creator.searchEmpAtPoint((long)newId, foundEmp);
+
+                    foreach (long newItem in newEmpFound)
+                    {
+                        if (!this.employeesListGui.Items.Contains(newItem))
+                        {
+                            this.employeesListGui.Items.Add(newItem);
+                        }
+                    }
+
+                    MessageBox.Show("found " + newEmpFound.Count() + " new employees");
                 }
                 catch(Exception ex)
                 {
@@ -75,11 +89,38 @@ namespace GuiPlatformSimulator
 
         private void btnStartResearch_Click(object sender, EventArgs e)
         {
-            UserAuthorizer auth = new vk_sea_lib.Authorize.UserAuthorizer();
-            auth.authorize();
+            Task.Factory.StartNew(() =>
+            {
+                UserAuthorizer auth = new vk_sea_lib.Authorize.UserAuthorizer();
+                auth.authorize();
 
-            creator = new CreateSocialGraph(UserAuthorizer.access_token, UserAuthorizer.user_id.ToString());
-            creator.createSocialGraph();
+                creator = new CreateSocialGraph(UserAuthorizer.access_token, UserAuthorizer.user_id.ToString());
+                creator.createSocialGraph();
+
+                foreach (KeyValuePair<long, string> black in creator.searcher.blackEmployeeStatusSetter.getAllBlackStatusedEmp.ToList())
+                {
+                    if (!this.employeesListGui.Items.Contains(black.Key))
+                    {
+                        this.employeesListGui.Items.Add(black.Key);
+                    }
+                };
+
+            });
+        }
+
+        private void btnUpdate_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                foreach (long id in this.creator.searcher.blackEmployeeStatusSetter.colored_vertices.Keys.ToList())
+                {
+                    this.employeesListGui.Items.Add(id);
+                }
+            }
+            catch(Exception ex)
+            {
+                MessageBox.Show(ex.Message);
+            }
         }
     }
 }
